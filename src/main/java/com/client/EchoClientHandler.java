@@ -31,13 +31,13 @@ public class EchoClientHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
         if (evt == WebSocketClientProtocolHandler.ClientHandshakeStateEvent.HANDSHAKE_COMPLETE){
-            System.out.println("WebSocket Client connected! response headers[sec-websocket-extensions]");
+            System.out.println("WebSocket Client connected! response headers[sec-websocket-extensions]\r\n");
         } else if (evt instanceof IdleStateEvent){
             IdleStateEvent event = (IdleStateEvent) evt;
             if (event.state() == IdleState.ALL_IDLE){
                 if (heartCount.get() == LOST_CONNECT){
                     ctx.close().sync();
-                    log.warn(MessageFormat.format("client {0} lost connect because heartbeat not response",ctx.channel()));
+                    log.warn(MessageFormat.format("client {0} lost connect because heartbeat not response\r\n",ctx.channel()));
                 }else{
                     ctx.writeAndFlush(new TextWebSocketFrame("ping"));
                     heartCount.incrementAndGet();
@@ -60,13 +60,13 @@ public class EchoClientHandler extends ChannelInboundHandlerAdapter {
             }else if ("pong".equals(text)){
                 heartCount.set(0);
             }else if (text.startsWith("ACK_MESSAGE")){
-                System.out.print(MessageFormat.format("i receive ack {0}",textFrame.text()));
+                System.out.print(MessageFormat.format("i receive ack {0}\r\n",textFrame.text()));
             }else{
                 var transferData = JSON.parseObject(textFrame.text(), TransferData.class);
                 if (transferData.getAck() != null){
                     ctx.writeAndFlush(new TextWebSocketFrame(transferData.getAck()));
                 }
-                System.out.print(MessageFormat.format("I receive message {0}",transferData.getContent()));
+                System.out.print(MessageFormat.format("I receive message {0}\r\n",transferData.getContent()));
             }
         }
     }

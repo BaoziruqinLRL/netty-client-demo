@@ -7,9 +7,14 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.codec.http.websocketx.*;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.SslHandler;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.text.MessageFormat;
@@ -42,15 +47,21 @@ public class LeadClientHandler {
                         @Override
                         protected void initChannel(SocketChannel ch) throws Exception {
                             ChannelPipeline pipeline = ch.pipeline();
+                            SSLEngine sslEngine = SSLContext.getDefault().createSSLEngine();
+                            sslEngine.setUseClientMode(true);
+                            var sslCtx = SslContextBuilder.forClient()
+                                    .trustManager(InsecureTrustManagerFactory.INSTANCE).build();
+                            pipeline.addLast(sslCtx.newHandler(ch.alloc(), host, port));
                             pipeline.addLast(new HttpClientCodec());
                             pipeline.addLast(new HttpObjectAggregator(65536));
                             pipeline.addLast(new WebSocketClientProtocolHandler(
                                     WebSocketClientHandshakerFactory.newHandshaker(
-                                            new URI("ws://" + host + ":" + port), WebSocketVersion.V13, null, true, EmptyHttpHeaders.INSTANCE, 6553600)));
+                                            new URI("wss://" + host + ":" + port), WebSocketVersion.V13, null, true, EmptyHttpHeaders.INSTANCE, 6553600)));
                             pipeline.addLast(new EchoClientHandler());
                         }
                     })
-                    .option(ChannelOption.ALLOW_HALF_CLOSURE,true);
+                    .option(ChannelOption.ALLOW_HALF_CLOSURE,true)
+                    .option(ChannelOption.SO_KEEPALIVE,false);
             ChannelFuture f = bootstrap.connect().syncUninterruptibly();
             channel = f.channel();
             if (f.isDone() && f.isSuccess()) {
